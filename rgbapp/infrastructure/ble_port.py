@@ -15,7 +15,7 @@ from typing import AsyncIterator, Optional
 from bleak import BleakClient
 
 from rgbapp.application.ports import PowerSourcePort
-from .ble import find_ble_device, choose_char, parse_cps, parse_ftms
+from .ble import find_ble_device, select_power_device, choose_char, parse_cps, parse_ftms
 
 
 class BlePowerSource(PowerSourcePort):
@@ -28,7 +28,8 @@ class BlePowerSource(PowerSourcePort):
         hint = self.ble_cfg.get("name_hint")
         prefer = (self.ble_cfg.get("prefer") or "cps").lower()
         print(f"[BLE] Skanuję... (prefer: {prefer}, hint: {hint}) — zacznij kręcić 🚴")
-        device = await find_ble_device(self.ble_cfg.get("address"), hint)
+        device_candidates = await find_ble_device(self.ble_cfg.get("address"), hint)
+        device = await select_power_device(device_candidates)
         # Kolejka do buforowania watów z callbacka → konsumenta async
         queue: asyncio.Queue[float] = asyncio.Queue(maxsize=100)
 

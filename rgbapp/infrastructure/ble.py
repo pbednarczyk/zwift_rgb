@@ -37,15 +37,59 @@ async def find_ble_device(address: Optional[str], name_hint: Optional[str]):
         return address
     devices = await BleakScanner.discover(timeout=6.0)
     name_hint_l = (name_hint or "").lower()
+    candidates = []
     for device in devices:
         name = (device.name or "").lower()
         if not name:
             continue
         if name_hint_l and name_hint_l in name:
-            return device
+            candidates.append(device)
+            continue
         if not name_hint_l and any(keyword in name for keyword in BLE_TRAINER_NAME_KEYWORDS):
-            return device
+            candidates.append(device)
+    if candidates:
+        return candidates
     raise RuntimeError("BLE trainer not found. Set ble.address or ble.name_hint in config.yaml.")
+
+
+def has_supported_power_char(services) -> bool:
+    available = get_notify_characteristic_uuids(services)
+    return CPS_CHAR.lower() in available or FTMS_CHAR_INDOOR.lower() in available
+
+
+def get_notify_characteristic_uuids(services) -> set[str]:
+    available_notify_chars: set[str] = set()
+    for service in services:
+        for char in getattr(service, "characteristics", []) or []:
+            properties = {str(prop).lower() for prop in getattr(char, "properties", []) or []}
+            if "notify" in properties or "indicate" in properties:
+                available_notify_chars.add(str(getattr(char, "uuid", "")).lower())
+    return available_notify_chars
+
+
+async def select_power_device(device_or_candidates):
+    if not isinstance(device_or_candidates, list):
+        return device_or_candidates
+    last_error = None
+    for device in device_or_candidates:
+        try:
+            async with BleakClient(device, timeout=15.0) as client:
+                services = getattr(client, "services", None)
+                if not services:
+                    services = await client.get_services()
+                if has_supported_power_char(services):
+                    return device
+                last_error = (
+                    f"{getattr(device, 'name', None) or device}: "
+                    f"notify characteristics {sorted(get_notify_characteristic_uuids(services))}"
+                )
+        except Exception as exc:
+            last_error = f"{getattr(device, 'name', None) or device}: {exc}"
+            continue
+    raise RuntimeError(
+        "No matching BLE device exposes CPS or FTMS power data. "
+        f"Last checked device: {last_error}"
+    )
 
 
 async def choose_char(client: BleakClient, prefer: str) -> tuple[str, bool]:
@@ -53,12 +97,7 @@ async def choose_char(client: BleakClient, prefer: str) -> tuple[str, bool]:
     if not services:
         services = await client.get_services()
 
-    available_notify_chars: set[str] = set()
-    for service in services:
-        for char in getattr(service, "characteristics", []) or []:
-            properties = {str(prop).lower() for prop in getattr(char, "properties", []) or []}
-            if "notify" in properties or "indicate" in properties:
-                available_notify_chars.add(str(getattr(char, "uuid", "")).lower())
+    available_notify_chars = get_notify_characteristic_uuids(services)
 
     prefer = (prefer or "cps").lower()
     candidates = (

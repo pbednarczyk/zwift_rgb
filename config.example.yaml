@@ -1,0 +1,43 @@
+# Copy this file to config.yaml and fill in values for your local instance.
+# config.yaml is ignored by Git because it may contain Tuya device IDs and local keys.
+tuya_devices:
+  - name: "Living Room Left"
+    id: "your-tuya-device-id"
+    key: "your-tuya-local-key"
+    ip: "192.168.1.100"
+    version: 3.5
+    dps_map: { power: 20, mode: 21, color: 24 }
+
+ftp: 260
+
+ble:
+  prefer: cps
+  address: null
+  name_hint: "KICKR"
+
+smoothing:
+  window_seconds: 0.25
+  max_update_hz: 10
+
+mapping:
+  mode: zones
+  colors_rgb:
+    white: [255, 255, 255]
+    blue: [0, 0, 255]
+    green: [0, 255, 0]
+    yellow: [255, 255, 0]
+    orange: [255, 64, 0]
+    red: [255, 0, 0]
+  zones:
+    - up_to_pct: 61
+      color: white
+    - up_to_pct: 76
+      color: blue
+    - up_to_pct: 90
+      color: green
+    - up_to_pct: 105
+      color: yellow
+    - up_to_pct: 118
+      color: orange
+    - up_to_pct: null
+      color: red

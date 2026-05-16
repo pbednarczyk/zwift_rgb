@@ -9,8 +9,8 @@ Definiujemy schemat `config.yaml` w kodzie, co:
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Union
-from pydantic import BaseModel, Field, NonNegativeFloat, PositiveFloat
+from typing import Dict, List, Optional, Union, Literal
+from pydantic import BaseModel, Field, NonNegativeFloat, PositiveFloat, field_validator
 
 
 class DeviceConfig(BaseModel):
@@ -65,12 +65,41 @@ class TransitionsConfig(BaseModel):
     wave_delay_ms: NonNegativeFloat = 60
 
 
+class MqttConfig(BaseModel):
+    """MQTT output settings for telemetry publishing."""
+
+    host: str = "localhost"
+    port: int = 1883
+    username: Optional[str] = None
+    password: Optional[str] = None
+    client_id: str = "zwift_rgb"
+    topic_prefix: str = "zwift"
+    qos: int = 0
+    retain: bool = False
+    publish_interval_ms: PositiveFloat = 500
+
+    @field_validator("host")
+    @classmethod
+    def validate_host(cls, value: str) -> str:
+        host = (value or "").strip()
+        if "://" in host or "/" in host:
+            raise ValueError(
+                "MQTT_HOST must be a broker hostname or IP only, for example "
+                "'homeassistant.local'. Do not use 'http://...' or the Home Assistant UI URL."
+            )
+        if ":" in host:
+            raise ValueError("Put the MQTT port in MQTT_PORT, not in MQTT_HOST.")
+        return host
+
+
 class AppConfig(BaseModel):
     """📒 Główny model konfiguracji aplikacji."""
 
-    tuya_devices: List[DeviceConfig]
+    output_mode: Literal["mqtt", "tuya_legacy", "both", "dry_run"] = "mqtt"
+    tuya_devices: List[DeviceConfig] = Field(default_factory=list)
     ftp: PositiveFloat = 260
     ble: BleConfig
+    mqtt: MqttConfig = MqttConfig()
     smoothing: SmoothingConfig = SmoothingConfig()
     mapping: MappingConfig = MappingConfig()
     transitions: TransitionsConfig = TransitionsConfig()

@@ -1,14 +1,7 @@
 # Copy this file to config.yaml and fill in values for your local instance.
-# config.yaml is ignored by Git because it may contain Tuya device IDs and local keys.
-tuya_devices:
-  - name: "Living Room Left"
-    id: "your-tuya-device-id"
-    key: "your-tuya-local-key"
-    ip: "192.168.1.100"
-    version: 3.5
-    dps_map: { power: 20, mode: 21, color: 24 }
+# config.yaml is ignored by Git because it may contain local secrets.
 
-ftp: 260
+output_mode: mqtt  # mqtt | dry_run | tuya_legacy | both
 
 ble:
   prefer: cps
@@ -18,6 +11,29 @@ ble:
 smoothing:
   window_seconds: 0.25
   max_update_hz: 10
+
+mqtt:
+  host: localhost
+  port: 1883
+  username: null
+  password: null
+  client_id: zwift_rgb
+  topic_prefix: zwift
+  qos: 0
+  retain: false
+  publish_interval_ms: 500
+
+# Legacy Tuya settings are only used by output_mode: tuya_legacy or both.
+tuya_devices:
+  - name: "Living Room Left"
+    id: "your-tuya-device-id"
+    key: "your-tuya-local-key"
+    ip: "192.168.1.100"
+    version: 3.5
+    dps_map: { power: 20, mode: 21, color: 24 }
+
+# Legacy-only: FTP and color mapping are ignored in mqtt and dry_run modes.
+ftp: 260
 
 mapping:
   mode: zones
